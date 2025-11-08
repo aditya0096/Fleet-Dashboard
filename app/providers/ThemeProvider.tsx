@@ -7,8 +7,8 @@ import { theme } from "../theme";
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <MUIThemeProvider theme={theme}>
-      <CssBaseline />
-      {children}
+      {/* <CssBaseline /> */}
+      <div suppressHydrationWarning>{children}</div>
     </MUIThemeProvider>
   );
 }

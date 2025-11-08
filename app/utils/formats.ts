@@ -21,10 +21,20 @@ export const formatDateTime = (dateString: string): string => {
   };
   
   /**
-   * Format speed with unit
+   * Convert km/h to mph and format with unit
+   * API returns speed in km/h, but UI shows in mph
    */
-  export const formatSpeed = (speed: number): string => {
-    return `${speed} mph`;
+  export const formatSpeed = (speedKmh: number): string => {
+    // Convert km/h to mph (1 km/h = 0.621371 mph)
+    const speedMph = Math.round(speedKmh * 0.621371);
+    return `${speedMph} mph`;
+  };
+  
+  /**
+   * Convert km/h to mph (just the number)
+   */
+  export const kmhToMph = (speedKmh: number): number => {
+    return Math.round(speedKmh * 0.621371);
   };
   
   /**
@@ -43,4 +53,13 @@ export const formatDateTime = (dateString: string): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${String(secs).padStart(2, "0")}`;
+  };
+  
+  /**
+   * Format ETA or return "-" if null
+   */
+  export const formatETA = (eta: string | null | undefined): string => {
+    if (!eta) return "-";
+    // You can format this further if needed
+    return formatDateTime(eta);
   };
