@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Grid, Container, Typography } from "@mui/material";
+import { Box, Grid, Container, Typography, Button } from "@mui/material";
 import { useVehicles } from "./hooks/useVehicles";
 import { useStatistics } from "./hooks/useStatistics";
 import { useVehicleDetail } from "./hooks/useVechicleDetail";
@@ -82,8 +82,8 @@ export default function Home() {
               borderRadius: 2,
               border: "1px solid #e0e0e0",
               height: "100%",
-              flex: 1,                  // Grow to fill column height
-              minHeight: 0,             // Allows children to use overflow
+              flex: 1,
+              minHeight: 0,
               display: "flex",
               flexDirection: "column",
             }}>

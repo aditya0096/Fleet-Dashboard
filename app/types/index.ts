@@ -58,10 +58,4 @@ export interface ErrorResponse {
 }
 
 
-export interface WebSocketMessage {
-  type: "vehicle_update" | "statistics_update" | "connection";
-  data: Vehicle | Vehicle[] | Statistics;
-}
-
-
 export type FilterStatus = "all" | "idle" | "en_route" | "delivered";

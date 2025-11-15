@@ -11,28 +11,28 @@ export function useVehicles() {
 
   // Fetch vehicles when filter changes
   useEffect(() => {
-   
+
     if (isFetchingRef.current || lastFetchedFilter.current === state.activeFilter) {
       return;
     }
 
     const fetchData = async () => {
       isFetchingRef.current = true;
-      
+
       try {
         actions.setLoading(true);
         actions.setError(null);
-        
+
         let vehicles;
         if (state.activeFilter === "all") {
           vehicles = await getVehicles();
         } else {
           vehicles = await getVehiclesByStatus(state.activeFilter);
         }
-        
+
         actions.setVehicles(vehicles);
         lastFetchedFilter.current = state.activeFilter;
-        
+
         if (vehicles.length > 0) {
           actions.setLastUpdate(new Date().toISOString());
         }
@@ -50,16 +50,16 @@ export function useVehicles() {
     };
 
     fetchData();
-    
+
   }, [state.activeFilter]);
 
- 
+
   const filteredVehicles = actions.getFilteredVehicles();
 
-  
+
   const fetchVehicles = async () => {
     if (isFetchingRef.current) return;
-    
+
     isFetchingRef.current = true;
     try {
       actions.setLoading(true);
@@ -83,7 +83,7 @@ export function useVehicles() {
 
   const fetchVehiclesByStatus = async (status: string) => {
     if (isFetchingRef.current) return;
-    
+
     isFetchingRef.current = true;
     try {
       actions.setLoading(true);

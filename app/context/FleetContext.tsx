@@ -1,10 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useMemo } from "react";
+import React, {
+    createContext,
+    useContext,
+    useReducer,
+    useMemo,
+    ReactNode,
+    Dispatch,
+} from "react";
 import type { Vehicle, Statistics, FilterStatus } from "@/app/types";
 
-// Context State Interface
-interface FleetState {
+/* --- State & Action Types --- */
+type FleetState = {
     vehicles: Vehicle[];
     statistics: Statistics | null;
     selectedVehicle: Vehicle | null;
@@ -12,35 +19,41 @@ interface FleetState {
     isLoading: boolean;
     error: string | null;
     lastUpdate: string | null;
-    nextUpdateCountdown: number; // seconds until next update
+    nextUpdateCountdown: number;
     isWebSocketConnected: boolean;
-}
+};
 
-interface FleetActions {
-    setVehicles: (vehicles: Vehicle[]) => void;
-    updateVehicle: (vehicle: Vehicle) => void;
-    setStatistics: (statistics: Statistics) => void;
-    setSelectedVehicle: (vehicle: Vehicle | null) => void;
-    setActiveFilter: (filter: FilterStatus) => void;
-    setLoading: (loading: boolean) => void;
-    setError: (error: string | null) => void;
-    setLastUpdate: (timestamp: string) => void;
-    setNextUpdateCountdown: (seconds: number) => void;
-    setWebSocketConnected: (connected: boolean) => void;
-    // Helper actions
-    getFilteredVehicles: () => Vehicle[];
-}
+type Action =
+    | { type: "SET_VEHICLES"; payload: Vehicle[] }
+    | { type: "UPDATE_VEHICLE"; payload: Vehicle }
+    | { type: "SET_STATISTICS"; payload: Statistics }
+    | { type: "SET_SELECTED_VEHICLE"; payload: Vehicle | null }
+    | { type: "SET_ACTIVE_FILTER"; payload: FilterStatus }
+    | { type: "SET_LOADING"; payload: boolean }
+    | { type: "SET_ERROR"; payload: string | null }
+    | { type: "SET_LAST_UPDATE"; payload: string }
+    | { type: "SET_NEXT_UPDATE_COUNTDOWN"; payload: number }
+    | { type: "SET_WEBSOCKET_CONNECTED"; payload: boolean }
+    | { type: "CLEAR_VEHICLES", payload: null };
 
-
-interface FleetContextType {
+type FleetContextType = {
     state: FleetState;
-    actions: FleetActions;
-}
+    actions: {
+        setVehicles: (v: Vehicle[]) => void;
+        updateVehicle: (v: Vehicle) => void;
+        setStatistics: (s: Statistics) => void;
+        setSelectedVehicle: (v: Vehicle | null) => void;
+        setActiveFilter: (f: FilterStatus) => void;
+        setLoading: (b: boolean) => void;
+        setError: (e: string | null) => void;
+        setLastUpdate: (t: string) => void;
+        setNextUpdateCountdown: (s: number) => void;
+        setWebSocketConnected: (b: boolean) => void;
+        getFilteredVehicles: () => Vehicle[];
+        setClearVehicles: () => void;
+    };
+};
 
-// Create Context
-const FleetContext = createContext<FleetContextType | undefined>(undefined);
-
-// Initial State
 const initialState: FleetState = {
     vehicles: [],
     statistics: null,
@@ -49,120 +62,90 @@ const initialState: FleetState = {
     isLoading: false,
     error: null,
     lastUpdate: null,
-    nextUpdateCountdown: 180, // 3 minutes in seconds
+    nextUpdateCountdown: 180,
     isWebSocketConnected: false,
 };
 
-// Context Provider Component
-export function FleetProvider({ children }: { children: ReactNode }) {
-    const [state, setState] = useState<FleetState>(initialState);
-
-    // Action creators (keep these as they are)
-    const setVehicles = useCallback((vehicles: Vehicle[]) => {
-        setState((prev) => ({ ...prev, vehicles }));
-    }, []);
-
-    const updateVehicle = useCallback((vehicle: Vehicle) => {
-        setState((prev) => ({
-            ...prev,
-            vehicles: prev.vehicles.map((v) =>
-                v.id === vehicle.id ? vehicle : v
-            ),
-            selectedVehicle:
-                prev.selectedVehicle?.id === vehicle.id ? vehicle : prev.selectedVehicle,
-        }));
-    }, []);
-
-    const setStatistics = useCallback((statistics: Statistics) => {
-        setState((prev) => ({ ...prev, statistics }));
-    }, []);
-
-    const setSelectedVehicle = useCallback((vehicle: Vehicle | null) => {
-        setState((prev) => ({ ...prev, selectedVehicle: vehicle }));
-    }, []);
-
-    const setActiveFilter = useCallback((filter: FilterStatus) => {
-        setState((prev) => ({ ...prev, activeFilter: filter }));
-    }, []);
-
-    const setLoading = useCallback((loading: boolean) => {
-        setState((prev) => ({ ...prev, isLoading: loading }));
-    }, []);
-
-    const setError = useCallback((error: string | null) => {
-        setState((prev) => ({ ...prev, error }));
-    }, []);
-
-    const setLastUpdate = useCallback((timestamp: string) => {
-        setState((prev) => ({ ...prev, lastUpdate: timestamp }));
-    }, []);
-
-    const setNextUpdateCountdown = useCallback((seconds: number) => {
-        setState((prev) => ({ ...prev, nextUpdateCountdown: seconds }));
-    }, []);
-
-    const setWebSocketConnected = useCallback((connected: boolean) => {
-        setState((prev) => ({ ...prev, isWebSocketConnected: connected }));
-    }, []);
-
-    // Helper: Get filtered vehicles - use useMemo instead of useCallback
-    const getFilteredVehicles = useCallback((): Vehicle[] => {
-        if (state.activeFilter === "all") {
-            return state.vehicles;
+/* --- Reducer --- */
+function reducer(state: FleetState, action: Action): FleetState {
+    switch (action.type) {
+        case "SET_VEHICLES":
+            return { ...state, vehicles: action.payload };
+        case "UPDATE_VEHICLE": {
+            const updated = state.vehicles.map((v) =>
+                v.id === action.payload.id ? action.payload : v
+            );
+            const selected =
+                state.selectedVehicle?.id === action.payload.id
+                    ? action.payload
+                    : state.selectedVehicle;
+            return { ...state, vehicles: updated, selectedVehicle: selected };
         }
-        return state.vehicles.filter(
-            (vehicle) => vehicle.status === state.activeFilter
-        );
-    }, [state.activeFilter, state.vehicles]);
+        case "SET_STATISTICS":
+            return { ...state, statistics: action.payload };
+        case "SET_SELECTED_VEHICLE":
+            return { ...state, selectedVehicle: action.payload };
+        case "SET_ACTIVE_FILTER":
+            return { ...state, activeFilter: action.payload };
+        case "SET_LOADING":
+            return { ...state, isLoading: action.payload };
+        case "SET_ERROR":
+            return { ...state, error: action.payload };
+        case "SET_LAST_UPDATE":
+            return { ...state, lastUpdate: action.payload };
+        case "SET_NEXT_UPDATE_COUNTDOWN":
+            return { ...state, nextUpdateCountdown: action.payload };
+        case "SET_WEBSOCKET_CONNECTED":
+            return { ...state, isWebSocketConnected: action.payload };
+        case "CLEAR_VEHICLES":
+            return { ...state, vehicles: [] }
+        default:
+            return state;
+    }
+}
 
-    // Memoize actions object
-    const actions: FleetActions = useMemo(
-        () => ({
-            setVehicles,
-            updateVehicle,
-            setStatistics,
-            setSelectedVehicle,
-            setActiveFilter,
-            setLoading,
-            setError,
-            setLastUpdate,
-            setNextUpdateCountdown,
-            setWebSocketConnected,
-            getFilteredVehicles,
-        }),
-        [
-            setVehicles,
-            updateVehicle,
-            setStatistics,
-            setSelectedVehicle,
-            setActiveFilter,
-            setLoading,
-            setError,
-            setLastUpdate,
-            setNextUpdateCountdown,
-            setWebSocketConnected,
-            getFilteredVehicles,
-        ]
-    );
+/* --- Context & Provider --- */
+const FleetContext = createContext<FleetContextType | undefined>(undefined);
 
-    // Memoize context value
-    const value: FleetContextType = useMemo(
-        () => ({
-            state,
-            actions,
-        }),
-        [state, actions]
-    );
+export function FleetProvider({ children }: { children: ReactNode }) {
+    const [state, dispatch] = useReducer(reducer, initialState);
+
+    // action helpers (thin wrappers, memoized)
+    const actions = useMemo(() => {
+        const d = (action: Action) => dispatch(action);
+        return {
+            setVehicles: (v: Vehicle[]) => d({ type: "SET_VEHICLES", payload: v }),
+            updateVehicle: (v: Vehicle) => d({ type: "UPDATE_VEHICLE", payload: v }),
+            setStatistics: (s: Statistics) => d({ type: "SET_STATISTICS", payload: s }),
+            setSelectedVehicle: (v: Vehicle | null) =>
+                d({ type: "SET_SELECTED_VEHICLE", payload: v }),
+            setActiveFilter: (f: FilterStatus) =>
+                d({ type: "SET_ACTIVE_FILTER", payload: f }),
+            setLoading: (b: boolean) => d({ type: "SET_LOADING", payload: b }),
+            setError: (e: string | null) => d({ type: "SET_ERROR", payload: e }),
+            setLastUpdate: (t: string) => d({ type: "SET_LAST_UPDATE", payload: t }),
+            setNextUpdateCountdown: (s: number) =>
+                d({ type: "SET_NEXT_UPDATE_COUNTDOWN", payload: s }),
+            setWebSocketConnected: (b: boolean) =>
+                d({ type: "SET_WEBSOCKET_CONNECTED", payload: b }),
+            getFilteredVehicles: () =>
+                state.activeFilter === "all"
+                    ? state.vehicles
+                    : state.vehicles.filter((veh) => veh.status === state.activeFilter),
+            setClearVehicles: () => d({ type: "CLEAR_VEHICLES", payload: null })
+        };
+
+    }, [state, dispatch]);
+
+    const value = useMemo(() => ({ state, actions }), [state, actions]);
 
     return (
         <FleetContext.Provider value={value}>{children}</FleetContext.Provider>
     );
 }
-// Custom hook to use FleetContext
+
 export function useFleet() {
-    const context = useContext(FleetContext);
-    if (context === undefined) {
-        throw new Error("useFleet must be used within a FleetProvider");
-    }
-    return context;
+    const ctx = useContext(FleetContext);
+    if (!ctx) throw new Error("useFleet must be used inside FleetProvider");
+    return ctx;
 }
